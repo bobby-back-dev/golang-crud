@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/bobby-back-dev/golang-crud/config/platform/database"
-	"github.com/bobby-back-dev/golang-crud/config/platform/godo"
+	"github.com/bobby-back-dev/golang-crud/helper/crypto"
+	"github.com/bobby-back-dev/golang-crud/helper/godo"
+	"github.com/bobby-back-dev/golang-crud/helper/reqres/reqresuser"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/handler"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/repository"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/service"
@@ -25,9 +27,12 @@ func main() {
 
 	defer database.ClosePool()
 
-	userRepository := repository.NewUserRepository(dbPool)
-	userService := service.NewUserService(*userRepository)
-	userHandler := handler.NewUserHandler(*userService)
+	hash := crypto.NewHash()
+	userRes := reqresuser.NewUserWebRes()
+
+	userRepository := repository.NewUserRepository(dbPool, hash)
+	userService := service.NewUserService(userRepository, hash, userRes)
+	userHandler := handler.NewUserHandler(userService)
 	handle := routes.SetRouter(userHandler)
 
 	s := &http.Server{
