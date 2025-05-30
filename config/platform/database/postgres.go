@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/bobby-back-dev/golang-crud/config/platform/godo"
+	"github.com/bobby-back-dev/golang-crud/helper/godo"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"time"

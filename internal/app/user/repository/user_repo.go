@@ -2,18 +2,23 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/bobby-back-dev/golang-crud/helper/crypto"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/models"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
 )
 
 type UserRepository struct {
 	pool *pgxpool.Pool
+	hash *crypto.Hash
 }
 
-func NewUserRepository(conn *pgxpool.Pool) *UserRepository {
+func NewUserRepository(conn *pgxpool.Pool, hash *crypto.Hash) *UserRepository {
 	return &UserRepository{
 		pool: conn,
+		hash: hash,
 	}
 }
 
@@ -30,29 +35,37 @@ func (ur *UserRepository) CreateUser(user *models.User) (*models.User, error) {
 	return users, nil
 }
 
-func (ur *UserRepository) GetAll(user *models.User) (*models.User, error) {
-
-	query := `SELECT id, name, email, password FROM users`
+func (ur *UserRepository) GetAll() (*[]models.User, error) {
+	query := `SELECT id, name, email FROM users`
 	ctx := context.Background()
-	users := &models.User{}
 
-	data, err := ur.pool.Query(ctx, query)
+	rows, err := ur.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	defer data.Close()
-	for data.Next() {
-		err := data.Scan(&users.ID, &users.Name, &users.Email, &users.Password)
+	defer rows.Close()
+
+	var allUsers []models.User
+
+	for rows.Next() {
+		var user models.User
+		err := rows.Scan(&user.ID, &user.Name, &user.Email)
 		if err != nil {
 			return nil, err
 		}
+
+		allUsers = append(allUsers, user)
 	}
-	return users, nil
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return &allUsers, nil
 }
 
 func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
 
-	query := `SELECT id, name, email, password FROM users WHERE id = $1`
+	query := `SELECT id, name, email FROM users WHERE id = $1`
 	ctx := context.Background()
 	users := &models.User{}
 
@@ -83,4 +96,25 @@ func (ur *UserRepository) DeleteUser(id int) error {
 		return err
 	}
 	return nil
+}
+
+func (ur *UserRepository) Login(email string, password string) (*models.User, error) {
+
+	log.Printf("Attempting to find user with email: %s", email)
+	query := `SELECT id, name, email, password FROM users WHERE email = $1`
+	ctx := context.Background()
+	users := &models.User{}
+	//var storeHashedPassword string
+
+	if err := ur.pool.QueryRow(ctx, query, email).Scan(&users.ID, &users.Name, &users.Email, &users.Password); err != nil {
+		return nil, errors.New("email or password incorrect")
+	}
+	isValidPwd := ur.hash.CheckPasswordHash(password, users.Password)
+
+	if !isValidPwd {
+		return nil, errors.New("password incorrect")
+	}
+
+	fmt.Println("Password is valid")
+	return users, nil
 }

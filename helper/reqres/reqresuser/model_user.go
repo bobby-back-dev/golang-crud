@@ -1,30 +1,35 @@
-package user
+package reqresuser
 
 import (
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/models"
 )
 
-func RegistRespUser(user models.User) UserRequestRegistOrUpdate {
-	return UserRequestRegistOrUpdate{
-		ID:       user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		Password: user.Password,
-	}
+type UserWebRes struct{}
+
+func NewUserWebRes() *UserWebRes {
+	return &UserWebRes{}
 }
 
-func GetAllDataUser(user models.User) UserResponseLogin {
-	return UserResponseLogin{
+func (uws *UserWebRes) GetDataUser(user models.User) *UserResponseLogin {
+	return &UserResponseLogin{
 		ID:    user.ID,
 		Name:  user.Name,
 		Email: user.Email,
 	}
 }
 
-func AppendUser(user []models.User) []UserResponseLogin {
-	var userList []UserResponseLogin
-	for _, v := range user {
-		userList = append(userList, GetAllDataUser(v))
+func (uws *UserWebRes) GetAllDataUser(user models.User) *UserResponseLogin {
+	return &UserResponseLogin{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
 	}
-	return userList
+}
+
+func (uws *UserWebRes) AppendUser(user *[]models.User) *[]UserResponseLogin {
+	var userList []UserResponseLogin
+	for _, v := range *user {
+		userList = append(userList, *uws.GetAllDataUser(v))
+	}
+	return &userList
 }
