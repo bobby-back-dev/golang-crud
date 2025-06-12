@@ -1,24 +1,23 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/bobby-back-dev/golang-crud/helper/reqres"
 	"github.com/bobby-back-dev/golang-crud/helper/reqres/reqresuser"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/service"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"strconv"
 )
 
 type UserHandler struct {
-	userService *service.UserService
+	userServices service.UserServices
 }
 
-func NewUserHandler(userServices *service.UserService) *UserHandler {
+func NewUserHandler(userServices service.UserServices) *UserHandler {
 	return &UserHandler{
-		userService: userServices,
+		userServices: userServices,
 	}
 }
 
@@ -36,7 +35,7 @@ func (uh *UserHandler) CreateUserHandler(w http.ResponseWriter, r *http.Request)
 
 	r.Header.Set("Content-Type", "application/json")
 
-	var users reqresuser.UserRequestRegistOrUpdate
+	var users reqresuser.UserRequestRegisOrUpdate
 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&users)
@@ -48,7 +47,7 @@ func (uh *UserHandler) CreateUserHandler(w http.ResponseWriter, r *http.Request)
 	log.Println(users)
 	defer r.Body.Close()
 
-	data, err := uh.userService.UserCreateService(users)
+	data, err := uh.userServices.UserCreateService(context.Background(), users)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -90,7 +89,12 @@ func (uh *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	data, err := uh.userService.LoginUser(users)
+	data, err := uh.userServices.LoginUser(context.Background(), users)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	if err != nil {
 		http.Error(w, "email or password not valid", http.StatusBadRequest)
 		return
@@ -111,66 +115,67 @@ func (uh *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (uh *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		fmt.Println("Method Not Allowed")
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	}
-
-	data, err := uh.userService.GetAllUser()
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	dataUser := reqres.WebResp{
-		Message: "User Found",
-		Data:    data,
-	}
-
-	encoder := json.NewEncoder(w)
-	if err := encoder.Encode(&dataUser); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (uh *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		fmt.Println("Method Not Allowed")
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	idInt, err := strconv.Atoi(id)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	data, err := uh.userService.GetUserByID(idInt)
-	if err != nil {
-		log.Println(data)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	dataUser := reqres.WebResp{
-		Message: "User Found",
-		Data:    data,
-	}
-	encoder := json.NewEncoder(w)
-	if err := encoder.Encode(&dataUser); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
+//
+//func (uh *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
+//	if r.Method != http.MethodGet {
+//		fmt.Println("Method Not Allowed")
+//		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+//	}
+//
+//	data, err := uh.userService.GetAllUser()
+//	if err != nil {
+//		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	w.Header().Set("Content-Type", "application/json")
+//	w.WriteHeader(http.StatusOK)
+//
+//	dataUser := reqres.WebResp{
+//		Message: "User Found",
+//		Data:    data,
+//	}
+//
+//	encoder := json.NewEncoder(w)
+//	if err := encoder.Encode(&dataUser); err != nil {
+//		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+//		return
+//	}
+//}
+//
+//func (uh *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
+//	if r.Method != http.MethodGet {
+//		fmt.Println("Method Not Allowed")
+//		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+//		return
+//	}
+//
+//	vars := mux.Vars(r)
+//	id := vars["id"]
+//
+//	idInt, err := strconv.Atoi(id)
+//	if err != nil {
+//		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	data, err := uh.userService.GetUserByID(idInt)
+//	if err != nil {
+//		log.Println(data)
+//		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	w.Header().Set("Content-Type", "application/json")
+//	w.WriteHeader(http.StatusOK)
+//
+//	dataUser := reqres.WebResp{
+//		Message: "User Found",
+//		Data:    data,
+//	}
+//	encoder := json.NewEncoder(w)
+//	if err := encoder.Encode(&dataUser); err != nil {
+//		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+//		return
+//	}
+//}

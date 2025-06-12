@@ -1,93 +1,118 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"github.com/bobby-back-dev/golang-crud/helper/crypto"
 	"github.com/bobby-back-dev/golang-crud/helper/reqres/reqresuser"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/models"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/repository"
+	"github.com/golang-jwt/jwt/v5"
 	"log"
 )
 
-type UserService struct {
-	userRepo *repository.UserRepository
+type UserServices interface {
+	UserCreateService(ctx context.Context, user reqresuser.UserRequestRegisOrUpdate) (*reqresuser.UserResponseLogin, error)
+	LoginUser(ctx context.Context, user *reqresuser.UserRequestLogin) (*reqresuser.UserResponseLogin, error)
+}
+
+type userService struct {
+	userRepo repository.UserRepo
 	hash     *crypto.Hash
 	resp     *reqresuser.UserWebRes
 }
 
-func NewUserService(userRepo *repository.UserRepository, hash *crypto.Hash, resp *reqresuser.UserWebRes) *UserService {
-	return &UserService{
+func NewUserService(userRepo repository.UserRepo, hash *crypto.Hash, resp *reqresuser.UserWebRes) UserServices {
+	return &userService{
 		userRepo: userRepo,
 		hash:     hash,
 		resp:     resp,
 	}
 }
 
-func (us *UserService) UserCreateService(user reqresuser.UserRequestRegistOrUpdate) (*reqresuser.UserResponseLogin, error) {
+var stringToken = []byte("datatahasiauntukjwt")
+
+func (us *userService) UserCreateService(ctx context.Context, user reqresuser.UserRequestRegisOrUpdate) (*reqresuser.UserResponseLogin, error) {
 
 	data := &models.User{
-		Name:     user.Name,
-		Email:    user.Email,
-		Password: user.Password,
+		Username:     user.Username,
+		PasswordHash: user.PasswordHash,
+		DisplayName:  user.DisplayName,
 	}
-	if data.Name == "" || data.Email == "" || data.Password == "" {
-		return nil, errors.New("invalid data")
+	if data.Username == "" || data.PasswordHash == "" || data.DisplayName == "" {
+		return nil, errors.New("username and password are required")
 	}
 
-	dataPassword, err := us.hash.HashPassword(data.Password)
+	dataPassword, err := us.hash.HashPassword(data.PasswordHash)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("password plaintext : ", data.Password)
+	log.Println("password plaintext : ", data.PasswordHash)
 
-	data.Password = dataPassword
+	data.PasswordHash = dataPassword
 
-	log.Println("password hash : ", data.Password)
+	log.Println("password hash : ", data.PasswordHash)
 
-	repo, err := us.userRepo.CreateUser(data)
+	repo, err := us.userRepo.Create(ctx, data)
 	if err != nil {
 		return nil, err
 	}
 	return us.resp.GetDataUser(*repo), nil
 }
 
-func (us *UserService) LoginUser(user *reqresuser.UserRequestLogin) (*reqresuser.UserResponseLogin, error) {
+func (us *userService) LoginUser(ctx context.Context, user *reqresuser.UserRequestLogin) (*reqresuser.UserResponseLogin, error) {
 
-	data := &models.User{
-		Email:    user.Email,
-		Password: user.Password,
+	if user.Username == "" || user.PasswordHash == "" {
+		return nil, errors.New("username is required")
 	}
-
-	if data.Email == "" || data.Password == "" {
-		return nil, errors.New("invalid data")
-	}
-	dataPassword, err := us.userRepo.Login(data.Email, data.Password)
+	data, err := us.userRepo.Login(ctx, user.Username)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("username or password is wrong")
 	}
 
-	log.Println("password input : ", data.Password)
-	log.Println("password hash : ", dataPassword)
+	passworIsValid := us.hash.CheckPasswordHash(user.PasswordHash, data.PasswordHash)
+	if !passworIsValid {
+		return nil, errors.New("password is invalid")
+	}
 
-	return us.resp.GetDataUser(*dataPassword), nil
-}
+	claim := jwt.MapClaims{
+		"id":          data.ID,
+		"username":    data.Username,
+		"displayname": data.DisplayName,
+	}
 
-func (us *UserService) GetAllUser() (*[]reqresuser.UserResponseLogin, error) {
-	//perbaiki error internal server error
-	data, err := us.userRepo.GetAll()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+	tokenData, err := token.SignedString(stringToken)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, errors.New("token is invalid")
 	}
 
-	return us.resp.AppendUser(data), nil
-}
+	log.Println("token : ", tokenData)
 
-func (us *UserService) GetUserByID(id int) (*reqresuser.UserResponseLogin, error) {
-
-	data, err := us.userRepo.GetUserByID(id)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
+	log.Println("password input : ", data.PasswordHash)
+	log.Println("password hash : ", passworIsValid)
 
 	return us.resp.GetDataUser(*data), nil
 }
+
+//
+//func (us *UserService) GetAllUser() (*[]reqresuser.UserResponseLogin, error) {
+//	//perbaiki error internal server error
+//	data, err := us.userRepo.GetAll()
+//	if err != nil {
+//		return nil, errors.New("user not found")
+//	}
+//
+//	return us.resp.AppendUser(data), nil
+//}
+//
+//func (us *UserService) GetUserByID(id int) (*reqresuser.UserResponseLogin, error) {
+//
+//	data, err := us.userRepo.GetUserByID(id)
+//	if err != nil {
+//		return nil, errors.New("user not found")
+//	}
+//
+//	return us.resp.GetDataUser(*data), nil
+//}
