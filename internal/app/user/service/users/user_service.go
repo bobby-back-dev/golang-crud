@@ -6,7 +6,7 @@ import (
 	"github.com/bobby-back-dev/golang-crud/helper/crypto"
 	"github.com/bobby-back-dev/golang-crud/helper/reqres/reqresuser"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/models"
-	"github.com/bobby-back-dev/golang-crud/internal/app/user/repository"
+	"github.com/bobby-back-dev/golang-crud/internal/app/user/repository/users"
 	"github.com/golang-jwt/jwt/v5"
 	"log"
 )
@@ -17,12 +17,12 @@ type UserServices interface {
 }
 
 type userService struct {
-	userRepo repository.UserRepo
+	userRepo users.UserRepo
 	hash     *crypto.Hash
 	resp     *reqresuser.UserWebRes
 }
 
-func NewUserService(userRepo repository.UserRepo, hash *crypto.Hash, resp *reqresuser.UserWebRes) UserServices {
+func NewUserService(userRepo users.UserRepo, hash *crypto.Hash, resp *reqresuser.UserWebRes) UserServices {
 	return &userService{
 		userRepo: userRepo,
 		hash:     hash,

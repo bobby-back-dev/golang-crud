@@ -8,7 +8,7 @@ import (
 	"github.com/bobby-back-dev/golang-crud/helper/reqres/reqresuser"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/handler"
 	"github.com/bobby-back-dev/golang-crud/internal/app/user/repository/users"
-	"github.com/bobby-back-dev/golang-crud/internal/app/user/service"
+	users2 "github.com/bobby-back-dev/golang-crud/internal/app/user/service/users"
 	"github.com/bobby-back-dev/golang-crud/routes"
 	"log"
 	"net/http"
@@ -31,7 +31,7 @@ func main() {
 	userRes := reqresuser.NewUserWebRes()
 
 	userRepository := users.NewUserRepository(dbPool, hash)
-	userService := service.NewUserService(userRepository, hash, userRes)
+	userService := users2.NewUserService(userRepository, hash, userRes)
 	userHandler := handler.NewUserHandler(userService)
 	handle := routes.SetRouter(userHandler)
 
